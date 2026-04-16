@@ -78,7 +78,6 @@ export type DocHistoryVersionRecord = {
 export type JsAutoDocsOptions = {
   root?: string;
   scanDir?: string;
-  outFile?: string;
   includeExtensions?: string[];
   docsTitle?: string;
   collapseJson?: boolean;
@@ -86,6 +85,5 @@ export type JsAutoDocsOptions = {
   index?: JsAutoDocsIndexOptions;
   logo?: string;
   maxVersions?: number;
-  enableInProductionBuild?: boolean;
   authors?: Record<string, AuthorProfile>;
 };

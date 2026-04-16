@@ -52,7 +52,7 @@ export type GeneratedAuthorProfile = {
 	links?: Record<string, string>;
 };
 
-export const generatedAt = "2026-04-16T22:06:19.735Z";
+export const generatedAt = "2026-04-16T22:18:02.180Z";
 
 export const docs: GeneratedDocEntry[] = [
   {

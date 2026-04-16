@@ -1,6 +1,6 @@
 {
 	"name": "sveltejsdoc",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "automatically generates beautiful docs via JSDoc",
 	"displayName": "SvelteJSDoc",
 	"publishConfig": {
