@@ -2,9 +2,9 @@ import { promises as fs } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { Plugin } from 'vite';
-import { DEFAULT_EXTENSIONS } from './constants';
-import { walk } from './discovery';
-import { normalize } from './helpers';
+import { DEFAULT_EXTENSIONS } from './constants.js';
+import { walk } from './discovery.js';
+import { normalize } from './helpers.js';
 import {
   createDocsAuthorPageSvelteModule,
   createDocsAuthorPageTsModule,
@@ -20,14 +20,14 @@ import {
   createDocsVersionPageSvelteModule,
   createDocsVersionPageTsModule,
   createGeneratedModule
-} from './output';
-import { parseFileDocs } from './parser';
+} from './output.js';
+import { parseFileDocs } from './parser.js';
 import type {
   AutoDocEntry,
   AutoDocSnapshot,
   DocHistoryVersionRecord,
   JsAutoDocsOptions
-} from './types';
+} from './types.js';
 
 type VersionedDocEntry = AutoDocEntry & {
   lastModified: string;

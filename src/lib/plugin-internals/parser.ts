@@ -1,8 +1,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { BLOCK_REGEX } from './constants';
-import { cleanJSDocLine, createId, inferTitleFromSignature, normalize, signatureAfterBlock, slugify } from './helpers';
-import type { AutoDocEntry, AutoDocTag } from './types';
+import { BLOCK_REGEX } from './constants.js';
+import { cleanJSDocLine, createId, inferTitleFromSignature, normalize, signatureAfterBlock, slugify } from './helpers.js';
+import type { AutoDocEntry, AutoDocTag } from './types.js';
 
 /**
  * @auto-doc

@@ -3,7 +3,7 @@ import type {
 	AuthorProfile,
 	DocHistoryVersionRecord,
 	JsAutoDocsIndexOptions
-} from './types';
+} from './types.js';
 type VersionedDocEntry = AutoDocEntry & {
 	lastModified: string;
 	versionHistory: string[];
