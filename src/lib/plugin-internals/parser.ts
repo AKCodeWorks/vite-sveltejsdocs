@@ -9,7 +9,7 @@ import type { AutoDocEntry, AutoDocTag } from './types.js';
  * @title Auto-Doc Block Parser
  * @group Parser Core
  * Parses a JSDoc block into a structured docs entry when it starts with `@auto-doc`.
- * Supports tags for `@param`, `@returns`, `@response`, `@headers`, `@body`, `@example`, `@group`, `@title`, and `@description`.
+ * Supports tags for `@param`, `@returns`, `@response`, `@headers`, `@body`, `@fetchUrl`, `@example`, `@group`, `@title`, and `@description`.
  * @param block Raw content captured inside a matched JSDoc block.
  * @param fileContent Full source file text.
  * @param blockStart Start index of the matched block.
@@ -35,13 +35,15 @@ export const parseBlock = (
   let response = '';
   let headers = '';
   let body = '';
+  let fetchUrl = '';
   let group = '';
   let customTitle = '';
+  let customDescription = '';
   let customDisplayPath = '';
   let consumedAutoDoc = false;
   let activeValue:
     | {
-        kind: 'example' | 'response' | 'returns' | 'headers' | 'body' | 'param' | 'tag';
+        kind: 'example' | 'response' | 'returns' | 'headers' | 'body' | 'fetchUrl' | 'param' | 'tag' | 'description';
         name?: string;
         lines: string[];
       }
@@ -62,6 +64,10 @@ export const parseBlock = (
         headers = value;
       } else if (activeValue.kind === 'body') {
         body = value;
+      } else if (activeValue.kind === 'fetchUrl') {
+        fetchUrl = value;
+      } else if (activeValue.kind === 'description') {
+        customDescription = value;
       } else if (activeValue.kind === 'param') {
         params.push({ name: activeValue.name ?? 'param', value });
       } else if (activeValue.kind === 'tag') {
@@ -108,6 +114,8 @@ export const parseBlock = (
         activeValue = { kind: 'headers', lines: value ? [value] : [] };
       } else if (normalizedName === 'body') {
         activeValue = { kind: 'body', lines: value ? [value] : [] };
+      } else if (normalizedName === 'fetchurl' || normalizedName === 'fetch-url') {
+        activeValue = { kind: 'fetchUrl', lines: value ? [value] : [] };
       } else if (normalizedName === 'example') {
         activeValue = { kind: 'example', lines: value ? [value] : [] };
       } else if (normalizedName === 'group') {
@@ -115,6 +123,13 @@ export const parseBlock = (
       } else if (normalizedName === 'title' || normalizedName === 'doc-title') {
         customTitle = value;
       } else if (normalizedName === 'description' || normalizedName === 'doc-description') {
+        activeValue = { kind: 'description', lines: value ? [value] : [] };
+      } else if (
+        normalizedName === 'displaypath' ||
+        normalizedName === 'display-path' ||
+        normalizedName === 'doc-displaypath' ||
+        normalizedName === 'doc-display-path'
+      ) {
         customDisplayPath = value;
       } else {
         activeValue = { kind: 'tag', name, lines: value ? [value] : [] };
@@ -134,7 +149,7 @@ export const parseBlock = (
 
   if (!consumedAutoDoc) return null;
 
-  const description = descriptionLines.join('\n').trim();
+  const description = customDescription || descriptionLines.join('\n').trim();
   const summary = description.split('\n').find((line) => line.trim().length > 0) ?? 'No summary provided.';
   const line = fileContent.slice(0, blockStart).split('\n').length;
   const signature = signatureAfterBlock(fileContent, blockEnd);
@@ -146,7 +161,7 @@ export const parseBlock = (
   const id = createId(filePath, line);
   return {
     id,
-    slug: slugify(`${title}-${line}`),
+    slug: slugify(title),
     group,
     title,
     summary,
@@ -161,6 +176,7 @@ export const parseBlock = (
     response,
     headers,
     body,
+    fetchUrl,
     examples,
     tags
   };

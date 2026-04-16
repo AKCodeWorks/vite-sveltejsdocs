@@ -7,7 +7,7 @@ import chokidar from 'chokidar';
 import { createServer, loadConfigFromFile } from 'vite';
 import { DEFAULT_EXTENSIONS, EXCLUDED_DIRS } from './plugin-internals/constants.js';
 import { walk } from './plugin-internals/discovery.js';
-import { normalize } from './plugin-internals/helpers.js';
+import { normalize, slugify } from './plugin-internals/helpers.js';
 import {
 	createDocsAuthorPageSvelteModule,
 	createDocsAuthorPageTsModule,
@@ -247,11 +247,35 @@ const toSnapshot = (doc: AutoDocEntry): AutoDocSnapshot => ({
 	response: doc.response,
 	headers: doc.headers,
 	body: doc.body,
+	fetchUrl: doc.fetchUrl,
 	examples: doc.examples,
 	tags: doc.tags
 });
 
-const serializeDocForHash = (doc: AutoDocEntry): string => JSON.stringify(toSnapshot(doc));
+const normalizeSnapshot = (snapshot: Partial<AutoDocSnapshot> | undefined): AutoDocSnapshot => ({
+	group: snapshot?.group ?? '',
+	title: snapshot?.title ?? '',
+	summary: snapshot?.summary ?? '',
+	description: snapshot?.description ?? '',
+	jsdocRaw: snapshot?.jsdocRaw ?? '',
+	signature: snapshot?.signature ?? '',
+	displayPath: snapshot?.displayPath ?? '',
+	params: snapshot?.params ?? [],
+	returns: snapshot?.returns ?? '',
+	response: snapshot?.response ?? '',
+	headers: snapshot?.headers ?? '',
+	body: snapshot?.body ?? '',
+	fetchUrl: snapshot?.fetchUrl ?? '',
+	examples: snapshot?.examples ?? [],
+	tags: snapshot?.tags ?? []
+});
+
+const serializeSnapshotForHash = (snapshot: AutoDocSnapshot): string => JSON.stringify(normalizeSnapshot(snapshot));
+
+const serializeDocForHash = (doc: AutoDocEntry): string => serializeSnapshotForHash(toSnapshot(doc));
+
+const contentHashForSnapshot = (snapshot: AutoDocSnapshot): string =>
+	createHash('sha1').update(serializeSnapshotForHash(snapshot)).digest('hex');
 
 const contentHashForDoc = (doc: AutoDocEntry): string =>
 	createHash('sha1').update(serializeDocForHash(doc)).digest('hex');
@@ -307,6 +331,7 @@ const loadHistory = async (historyOutFile: string): Promise<DocHistoryStore> => 
 								response: '',
 								headers: '',
 								body: '',
+								fetchUrl: '',
 								examples: [],
 								tags: []
 							}
@@ -320,22 +345,7 @@ const loadHistory = async (historyOutFile: string): Promise<DocHistoryStore> => 
 								(entry as { changedAt?: string }).changedAt ?? record.lastModified ?? new Date(0).toISOString()
 							),
 							contentHash: String((entry as { contentHash?: string }).contentHash ?? record.contentHash ?? ''),
-							snapshot: (entry as { snapshot?: AutoDocSnapshot }).snapshot ?? {
-								group: '',
-								title: '',
-								summary: '',
-								description: '',
-								jsdocRaw: '',
-								signature: '',
-								displayPath: '',
-								params: [],
-								returns: '',
-								response: '',
-								headers: '',
-								body: '',
-								examples: [],
-								tags: []
-							}
+							snapshot: normalizeSnapshot((entry as { snapshot?: AutoDocSnapshot }).snapshot)
 						};
 					}
 
@@ -343,10 +353,35 @@ const loadHistory = async (historyOutFile: string): Promise<DocHistoryStore> => 
 				})
 				.filter((entry): entry is DocHistoryVersionRecord => Boolean(entry && entry.version));
 
+			const dedupedVersions = normalizedVersions
+				.slice()
+				.reverse()
+				.reduce<DocHistoryVersionRecord[]>((acc, entry) => {
+					const normalizedSnapshot = normalizeSnapshot(entry.snapshot);
+					const entryHash = entry.contentHash || contentHashForSnapshot(normalizedSnapshot);
+					const previousKept = acc[acc.length - 1];
+
+					if (previousKept) {
+						const previousHash = previousKept.contentHash || contentHashForSnapshot(normalizeSnapshot(previousKept.snapshot));
+						if (previousHash === entryHash) {
+							return acc;
+						}
+					}
+
+					acc.push({
+						...entry,
+						contentHash: entryHash,
+						snapshot: normalizedSnapshot
+					});
+					return acc;
+				}, [])
+				.reverse();
+
 			upgraded[key] = {
-				contentHash: record.contentHash,
+				contentHash:
+					dedupedVersions[0]?.contentHash || record.contentHash || contentHashForSnapshot(normalizeSnapshot(dedupedVersions[0]?.snapshot)),
 				lastModified: record.lastModified,
-				versions: normalizedVersions
+				versions: dedupedVersions
 			};
 		}
 
@@ -360,6 +395,21 @@ const saveHistory = async (historyOutFile: string, history: DocHistoryStore): Pr
 	await writeFileIfChanged(historyOutFile, `${JSON.stringify(history, null, 2)}\n`);
 };
 
+const assignUniqueSlugs = (docs: AutoDocEntry[]): AutoDocEntry[] => {
+	const slugCounts = new Map<string, number>();
+
+	return docs.map((doc) => {
+		const baseSlug = slugify(doc.title);
+		const nextCount = (slugCounts.get(baseSlug) ?? 0) + 1;
+		slugCounts.set(baseSlug, nextCount);
+
+		return {
+			...doc,
+			slug: nextCount === 1 ? baseSlug : `${baseSlug}-${nextCount}`
+		};
+	});
+};
+
 const applyVersioning = async (docs: AutoDocEntry[], historyOutFile: string, maxVersions: number): Promise<VersionedDocEntry[]> => {
 	const history = await loadHistory(historyOutFile);
 	const now = new Date();
@@ -368,12 +418,17 @@ const applyVersioning = async (docs: AutoDocEntry[], historyOutFile: string, max
 
 	const versionedDocs = docs.map((doc) => {
 		const key = doc.id;
-		const contentHash = contentHashForDoc(doc);
+		const snapshot = toSnapshot(doc);
+		const contentHash = contentHashForSnapshot(snapshot);
 		const previous = history[key];
+		const latestStoredVersion = previous?.versions[0] ?? null;
+		const latestStoredSnapshot = latestStoredVersion ? normalizeSnapshot(latestStoredVersion.snapshot) : null;
+		const latestStoredHash = latestStoredVersion
+			? latestStoredVersion.contentHash || contentHashForSnapshot(latestStoredSnapshot)
+			: previous?.contentHash || '';
 
 		if (!previous) {
 			const firstVersion = makeCalver(now, []);
-			const snapshot = toSnapshot(doc);
 			const created: DocHistoryRecord = {
 				contentHash,
 				versions: [
@@ -394,9 +449,31 @@ const applyVersioning = async (docs: AutoDocEntry[], historyOutFile: string, max
 			};
 		}
 
-		if (previous.contentHash !== contentHash) {
+		if (latestStoredHash !== contentHash) {
+			if (latestStoredSnapshot && serializeSnapshotForHash(latestStoredSnapshot) === serializeSnapshotForHash(snapshot)) {
+				const stableVersions = previous.versions.slice(0, maxVersions);
+				if (stableVersions.length > 0) {
+					stableVersions[0] = {
+						...stableVersions[0],
+						contentHash,
+						snapshot
+					};
+				}
+
+				const stable: DocHistoryRecord = {
+					contentHash,
+					versions: stableVersions,
+					lastModified: previous.lastModified
+				};
+				nextHistory[key] = stable;
+				return {
+					...doc,
+					lastModified: stable.lastModified,
+					versionHistory: stable.versions.map((entry) => entry.version)
+				};
+			}
+
 			const nextVersion = makeCalver(now, previous.versions.map((entry) => entry.version));
-			const snapshot = toSnapshot(doc);
 			const updated: DocHistoryRecord = {
 				contentHash,
 				versions: [
@@ -423,7 +500,7 @@ const applyVersioning = async (docs: AutoDocEntry[], historyOutFile: string, max
 			stableVersions[0] = {
 				...stableVersions[0],
 				contentHash,
-				snapshot: toSnapshot(doc)
+				snapshot
 			};
 		}
 
@@ -514,7 +591,9 @@ const generateDocsApp = async (options: StandaloneDocsOptions): Promise<{ appDir
 		.flat()
 		.sort((a, b) => a.filePath.localeCompare(b.filePath) || a.line - b.line);
 
-	const versionedDocs = await applyVersioning(docs, historyOutFile, maxVersions);
+	const docsWithUniqueSlugs = assignUniqueSlugs(docs);
+
+	const versionedDocs = await applyVersioning(docsWithUniqueSlugs, historyOutFile, maxVersions);
 	const history = await loadHistory(historyOutFile);
 
 	await Promise.all([

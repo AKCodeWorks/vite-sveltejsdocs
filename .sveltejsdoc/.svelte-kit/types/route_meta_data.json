@@ -1,0 +1,26 @@
+{
+	"/": [
+		"src/routes/+page.ts"
+	],
+	"/docs": [
+		"src/routes/docs/+page.ts",
+		"src/routes/docs/+layout.ts",
+		"src/routes/docs/+layout.ts"
+	],
+	"/docs/authors/[authorKey]": [
+		"src/routes/docs/authors/[authorKey]/+page.ts",
+		"src/routes/docs/+layout.ts"
+	],
+	"/docs/groups/[...groupPath]": [
+		"src/routes/docs/groups/[...groupPath]/+page.ts",
+		"src/routes/docs/+layout.ts"
+	],
+	"/docs/[slug]": [
+		"src/routes/docs/[slug]/+page.server.ts",
+		"src/routes/docs/+layout.ts"
+	],
+	"/docs/[slug]/versions/[version]": [
+		"src/routes/docs/[slug]/versions/[version]/+page.ts",
+		"src/routes/docs/+layout.ts"
+	]
+}

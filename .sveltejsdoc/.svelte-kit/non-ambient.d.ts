@@ -1,0 +1,55 @@
+
+// this file is generated — do not edit it
+
+
+declare module "svelte/elements" {
+	export interface HTMLAttributes<T> {
+		'data-sveltekit-keepfocus'?: true | '' | 'off' | undefined | null;
+		'data-sveltekit-noscroll'?: true | '' | 'off' | undefined | null;
+		'data-sveltekit-preload-code'?:
+			| true
+			| ''
+			| 'eager'
+			| 'viewport'
+			| 'hover'
+			| 'tap'
+			| 'off'
+			| undefined
+			| null;
+		'data-sveltekit-preload-data'?: true | '' | 'hover' | 'tap' | 'off' | undefined | null;
+		'data-sveltekit-reload'?: true | '' | 'off' | undefined | null;
+		'data-sveltekit-replacestate'?: true | '' | 'off' | undefined | null;
+	}
+}
+
+export {};
+
+
+declare module "$app/types" {
+	type MatcherParam<M> = M extends (param : string) => param is (infer U extends string) ? U : string;
+
+	export interface AppTypes {
+		RouteId(): "/" | "/docs" | "/docs/authors" | "/docs/authors/[authorKey]" | "/docs/groups" | "/docs/groups/[...groupPath]" | "/docs/[slug]" | "/docs/[slug]/versions" | "/docs/[slug]/versions/[version]";
+		RouteParams(): {
+			"/docs/authors/[authorKey]": { authorKey: string };
+			"/docs/groups/[...groupPath]": { groupPath: string };
+			"/docs/[slug]": { slug: string };
+			"/docs/[slug]/versions": { slug: string };
+			"/docs/[slug]/versions/[version]": { slug: string; version: string }
+		};
+		LayoutParams(): {
+			"/": { authorKey?: string; groupPath?: string; slug?: string; version?: string };
+			"/docs": { authorKey?: string; groupPath?: string; slug?: string; version?: string };
+			"/docs/authors": { authorKey?: string };
+			"/docs/authors/[authorKey]": { authorKey: string };
+			"/docs/groups": { groupPath?: string };
+			"/docs/groups/[...groupPath]": { groupPath: string };
+			"/docs/[slug]": { slug: string; version?: string };
+			"/docs/[slug]/versions": { slug: string; version?: string };
+			"/docs/[slug]/versions/[version]": { slug: string; version: string }
+		};
+		Pathname(): "/" | "/docs" | `/docs/authors/${string}` & {} | `/docs/groups/${string}` & {} | `/docs/${string}` & {} | `/docs/${string}/versions/${string}` & {};
+		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
+		Asset(): string & {};
+	}
+}

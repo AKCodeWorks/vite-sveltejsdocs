@@ -44,6 +44,7 @@ export type AutoDocEntry = {
   response: string;
   headers: string;
   body: string;
+  fetchUrl: string;
   examples: string[];
   tags: AutoDocTag[];
 };
@@ -62,6 +63,7 @@ export type AutoDocSnapshot = Pick<
   | 'response'
   | 'headers'
   | 'body'
+  | 'fetchUrl'
   | 'examples'
   | 'tags'
 >;

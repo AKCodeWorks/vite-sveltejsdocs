@@ -68,17 +68,14 @@ export const inferTitleFromSignature = (signature: string, fallback: string): st
  * @auto-doc
  * @title Signature Locator
  * @group Parser Helpers
- * Finds the next likely declaration/signature line after a matched JSDoc block.
+ * Finds the next likely declaration block after a matched JSDoc block.
  * @param fileContent Full file content containing the matched block.
  * @param blockEnd End index of the matched JSDoc block.
- * @returns The first non-empty, non-comment line after the block.
+ * @returns The next declaration block, trimmed and de-indented for display.
  */
 export const signatureAfterBlock = (fileContent: string, blockEnd: number): string => {
   const trailing = fileContent.slice(blockEnd);
-  const lines = trailing
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.startsWith('//'));
+  const lines = trailing.split('\n').map((line) => line.replace(/\r$/, ''));
 
   const isLikelySignatureLine = (line: string): boolean => {
     if (line.startsWith('/*') || line.startsWith('*')) return false;
@@ -92,5 +89,147 @@ export const signatureAfterBlock = (fileContent: string, blockEnd: number): stri
     return false;
   };
 
-  return lines.find(isLikelySignatureLine) ?? '';
+  const startIndex = lines.findIndex((line) => {
+    const trimmed = line.trim();
+    return trimmed.length > 0 && !trimmed.startsWith('//') && isLikelySignatureLine(trimmed);
+  });
+
+  if (startIndex < 0) return '';
+
+  const trimAndDedent = (blockLines: string[]): string => {
+    const withoutEdgeBlanks = [...blockLines];
+    while (withoutEdgeBlanks[0]?.trim() === '') withoutEdgeBlanks.shift();
+    while (withoutEdgeBlanks[withoutEdgeBlanks.length - 1]?.trim() === '') withoutEdgeBlanks.pop();
+    if (withoutEdgeBlanks.length === 0) return '';
+
+    const indents = withoutEdgeBlanks
+      .filter((line) => line.trim().length > 0)
+      .map((line) => line.match(/^\s*/)?.[0].length ?? 0);
+    const minIndent = indents.length > 0 ? Math.min(...indents) : 0;
+
+    return withoutEdgeBlanks.map((line) => line.slice(minIndent).trimEnd()).join('\n').trim();
+  };
+
+  const collected: string[] = [];
+  let braceDepth = 0;
+  let bracketDepth = 0;
+  let parenDepth = 0;
+  let sawBlock = false;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let inTemplateString = false;
+  let inBlockComment = false;
+  let escaped = false;
+
+  for (let index = startIndex; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+    if (collected.length > 0 && trimmed.startsWith('/**')) break;
+
+    collected.push(line);
+
+    for (let cursor = 0; cursor < line.length; cursor += 1) {
+      const ch = line[cursor];
+      const next = line[cursor + 1] ?? '';
+
+      if (inBlockComment) {
+        if (ch === '*' && next === '/') {
+          inBlockComment = false;
+          cursor += 1;
+        }
+        continue;
+      }
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (inSingleQuote) {
+        if (ch === '\\') {
+          escaped = true;
+          continue;
+        }
+        if (ch === "'") inSingleQuote = false;
+        continue;
+      }
+
+      if (inDoubleQuote) {
+        if (ch === '\\') {
+          escaped = true;
+          continue;
+        }
+        if (ch === '"') inDoubleQuote = false;
+        continue;
+      }
+
+      if (inTemplateString) {
+        if (ch === '\\') {
+          escaped = true;
+          continue;
+        }
+        if (ch === '`') {
+          inTemplateString = false;
+          continue;
+        }
+      }
+
+      if (ch === '/' && next === '/') break;
+      if (ch === '/' && next === '*') {
+        inBlockComment = true;
+        cursor += 1;
+        continue;
+      }
+      if (ch === "'") {
+        inSingleQuote = true;
+        continue;
+      }
+      if (ch === '"') {
+        inDoubleQuote = true;
+        continue;
+      }
+      if (ch === '`') {
+        inTemplateString = true;
+        continue;
+      }
+
+      if (ch === '{') {
+        braceDepth += 1;
+        sawBlock = true;
+        continue;
+      }
+      if (ch === '}') {
+        braceDepth = Math.max(0, braceDepth - 1);
+        continue;
+      }
+      if (ch === '[') {
+        bracketDepth += 1;
+        continue;
+      }
+      if (ch === ']') {
+        bracketDepth = Math.max(0, bracketDepth - 1);
+        continue;
+      }
+      if (ch === '(') {
+        parenDepth += 1;
+        continue;
+      }
+      if (ch === ')') {
+        parenDepth = Math.max(0, parenDepth - 1);
+      }
+    }
+
+    const balanced = braceDepth === 0 && bracketDepth === 0 && parenDepth === 0 && !inBlockComment;
+    if (!balanced) continue;
+
+    if (sawBlock) {
+      return trimAndDedent(collected);
+    }
+
+    if (/[;}]\s*$/.test(trimmed)) {
+      return trimAndDedent(collected);
+    }
+  }
+
+  return trimAndDedent(collected);
 };
