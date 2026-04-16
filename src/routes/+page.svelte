@@ -1,8 +1,46 @@
 <script lang="ts">
 	/**
 	 * @auto-doc
-	 * @title Example Page
-	 * @description This is an example page demonstrating the usage of jsAutoDocs with SvelteKit
+	 * @title 1 Example POST
+	 * @description Some sample POST request
+	 * @group Examples
+	 * @author iatrophobic
+	 * @returns {yeet: string, age: number}
+	 * @method POST
+	 * @headers {"Authorization": "Bearer <token>", "x-api-key" : "somekey"}
+	 * @body {age: 5}
+	 */
+
+	/**
+	 * @auto-doc
+	 * @title 2 Example GET
+	 * @description Some example get request
+	 * @method GET
+	 * @group Examples
+	 */
+
+	/**
+	 * @auto-doc
+	 * @title 3 Example DELETE
+	 * @description Some sample delete request
+	 * @method DELETE
+	 * @group Examples
+	 */
+
+	/**
+	 * @auto-doc
+	 * @title 4 Example PUT
+	 * @description Some sample PUT request
+	 * @method PUT
+	 * @group Examples
+	 *
+	 */
+
+	/**
+	 * @auto-doc
+	 * @title 5 Example PATCH
+	 * @description Some sample PATCH request
+	 * @method PATCH
 	 * @group Examples
 	 */
 </script>

@@ -1,14 +1,18 @@
 {
-	"name": "vite-sveltejsdocs",
+	"name": "sveltejsdoc",
 	"version": "0.0.2",
-	"description": "A vite plugin that automatically generates beautiful docs via JSDoc",
-	"displayName": "Vite SvelteJSDocs",
+	"description": "automatically generates beautiful docs via JSDoc",
+	"displayName": "SvelteJSDoc",
 	"publishConfig": {
 		"access": "public"
+	},
+	"bin": {
+		"sveltejsdoc": "./dist/cli.js"
 	},
 	"main": "./dist/index.js",
 	"scripts": {
 		"dev": "vite dev",
+		"docs:start": "bun run ./src/lib/cli.ts start",
 		"build": "vite build && npm run prepack",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
@@ -26,29 +30,34 @@
 	"sideEffects": [
 		"**/*.css"
 	],
-	"svelte": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"type": "module",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"svelte": "./dist/index.js",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
+		},
+		"./cli": {
+			"import": "./dist/cli.js",
+			"default": "./dist/cli.js"
 		}
 	},
-	"peerDependencies": {
-		"svelte": "^5.0.0",
-		"@sveltejs/kit": "^2.50.0"
+	"dependencies": {
+		"@sveltejs/adapter-auto": "^7.0.1",
+		"@sveltejs/kit": "^2.57.0",
+		"@sveltejs/vite-plugin-svelte": "^7.0.0",
+		"@tailwindcss/vite": "^4.2.2",
+		"chokidar": "^4.0.3",
+		"shiki": "^4.0.2",
+		"svelte": "^5.55.2",
+		"tailwindcss": "^4.2.2",
+		"vite": "^8.0.7"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.4",
 		"@eslint/js": "^10.0.1",
-		"@sveltejs/adapter-auto": "^7.0.1",
-		"@sveltejs/kit": "^2.57.0",
 		"@sveltejs/package": "^2.5.7",
-		"@sveltejs/vite-plugin-svelte": "^7.0.0",
-		"@tailwindcss/vite": "^4.2.2",
 		"@types/node": "^22",
 		"eslint": "^10.2.0",
 		"eslint-config-prettier": "^10.1.8",
@@ -58,12 +67,9 @@
 		"prettier-plugin-svelte": "^3.5.1",
 		"prettier-plugin-tailwindcss": "^0.7.2",
 		"publint": "^0.3.18",
-		"svelte": "^5.55.2",
 		"svelte-check": "^4.4.6",
-		"tailwindcss": "^4.2.2",
 		"typescript": "^6.0.2",
-		"typescript-eslint": "^8.58.1",
-		"vite": "^8.0.7"
+		"typescript-eslint": "^8.58.1"
 	},
 	"keywords": [
 		"svelte"

@@ -42,6 +42,8 @@ export type AutoDocEntry = {
   params: AutoDocTag[];
   returns: string;
   response: string;
+  headers: string;
+  body: string;
   examples: string[];
   tags: AutoDocTag[];
 };
@@ -58,6 +60,8 @@ export type AutoDocSnapshot = Pick<
   | 'params'
   | 'returns'
   | 'response'
+  | 'headers'
+  | 'body'
   | 'examples'
   | 'tags'
 >;

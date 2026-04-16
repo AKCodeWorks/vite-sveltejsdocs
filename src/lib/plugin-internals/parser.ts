@@ -9,7 +9,7 @@ import type { AutoDocEntry, AutoDocTag } from './types.js';
  * @title Auto-Doc Block Parser
  * @group Parser Core
  * Parses a JSDoc block into a structured docs entry when it starts with `@auto-doc`.
- * Supports tags for `@param`, `@returns`, `@response`, `@example`, `@group`, `@title`, and `@description`.
+ * Supports tags for `@param`, `@returns`, `@response`, `@headers`, `@body`, `@example`, `@group`, `@title`, and `@description`.
  * @param block Raw content captured inside a matched JSDoc block.
  * @param fileContent Full source file text.
  * @param blockStart Start index of the matched block.
@@ -33,25 +33,43 @@ export const parseBlock = (
   const examples: string[] = [];
   let returns = '';
   let response = '';
+  let headers = '';
+  let body = '';
   let group = '';
   let customTitle = '';
   let customDisplayPath = '';
   let consumedAutoDoc = false;
-  let currentExampleLines: string[] | null = null;
-  let currentResponseLines: string[] | null = null;
+  let activeValue:
+    | {
+        kind: 'example' | 'response' | 'returns' | 'headers' | 'body' | 'param' | 'tag';
+        name?: string;
+        lines: string[];
+      }
+    | null = null;
 
-  const flushCurrentExample = (): void => {
-    if (!currentExampleLines) return;
-    const value = currentExampleLines.join('\n').trim();
-    if (value) examples.push(value);
-    currentExampleLines = null;
-  };
+  const flushActiveValue = (): void => {
+    if (!activeValue) return;
+    const value = activeValue.lines.join('\n').trim();
 
-  const flushCurrentResponse = (): void => {
-    if (!currentResponseLines) return;
-    const value = currentResponseLines.join('\n').trim();
-    if (value) response = value;
-    currentResponseLines = null;
+    if (value) {
+      if (activeValue.kind === 'example') {
+        examples.push(value);
+      } else if (activeValue.kind === 'response') {
+        response = value;
+      } else if (activeValue.kind === 'returns') {
+        returns = value;
+      } else if (activeValue.kind === 'headers') {
+        headers = value;
+      } else if (activeValue.kind === 'body') {
+        body = value;
+      } else if (activeValue.kind === 'param') {
+        params.push({ name: activeValue.name ?? 'param', value });
+      } else if (activeValue.kind === 'tag') {
+        tags.push({ name: activeValue.name ?? 'tag', value });
+      }
+    }
+
+    activeValue = null;
   };
 
   for (const line of lines) {
@@ -65,10 +83,8 @@ export const parseBlock = (
     }
 
     if (!trimmed) {
-      if (currentExampleLines) {
-        currentExampleLines.push('');
-      } else if (currentResponseLines) {
-        currentResponseLines.push('');
+      if (activeValue) {
+        activeValue.lines.push('');
       } else {
         descriptionLines.push('');
       }
@@ -76,23 +92,24 @@ export const parseBlock = (
     }
 
     if (trimmed.startsWith('@')) {
-      flushCurrentExample();
-      flushCurrentResponse();
+      flushActiveValue();
       const [, name = '', rawValue = ''] = trimmed.match(/^@(\S+)\s*(.*)$/) ?? [];
       const value = rawValue.trim();
       if (!name) continue;
       const normalizedName = name.toLowerCase();
 
       if (normalizedName === 'param') {
-        params.push({ name, value });
+        activeValue = { kind: 'param', name, lines: value ? [value] : [] };
       } else if (normalizedName === 'returns' || normalizedName === 'return') {
-        returns = value;
+        activeValue = { kind: 'returns', lines: value ? [value] : [] };
       } else if (normalizedName === 'response') {
-        currentResponseLines = [];
-        if (value) currentResponseLines.push(value);
+        activeValue = { kind: 'response', lines: value ? [value] : [] };
+      } else if (normalizedName === 'headers') {
+        activeValue = { kind: 'headers', lines: value ? [value] : [] };
+      } else if (normalizedName === 'body') {
+        activeValue = { kind: 'body', lines: value ? [value] : [] };
       } else if (normalizedName === 'example') {
-        currentExampleLines = [];
-        if (value) currentExampleLines.push(value);
+        activeValue = { kind: 'example', lines: value ? [value] : [] };
       } else if (normalizedName === 'group') {
         group = value;
       } else if (normalizedName === 'title' || normalizedName === 'doc-title') {
@@ -100,26 +117,20 @@ export const parseBlock = (
       } else if (normalizedName === 'description' || normalizedName === 'doc-description') {
         customDisplayPath = value;
       } else {
-        tags.push({ name, value });
+        activeValue = { kind: 'tag', name, lines: value ? [value] : [] };
       }
       continue;
     }
 
-    if (currentExampleLines) {
-      currentExampleLines.push(trimmed);
-      continue;
-    }
-
-    if (currentResponseLines) {
-      currentResponseLines.push(trimmed);
+    if (activeValue) {
+      activeValue.lines.push(trimmed);
       continue;
     }
 
     descriptionLines.push(trimmed);
   }
 
-  flushCurrentExample();
-  flushCurrentResponse();
+  flushActiveValue();
 
   if (!consumedAutoDoc) return null;
 
@@ -148,6 +159,8 @@ export const parseBlock = (
     params,
     returns,
     response,
+    headers,
+    body,
     examples,
     tags
   };
