@@ -1,6 +1,6 @@
 {
 	"name": "vite-sveltejsdocs",
-	"version": "0.0.4",
+	"version": "0.0.2",
 	"description": "A vite plugin that automatically generates beautiful docs via JSDoc",
 	"displayName": "Vite SvelteJSDocs",
 	"publishConfig": {
@@ -63,8 +63,7 @@
 		"tailwindcss": "^4.2.2",
 		"typescript": "^6.0.2",
 		"typescript-eslint": "^8.58.1",
-		"vite": "^8.0.7",
-		"vite-sveltejsdocs": "file:/Users/akcodeworks/dev/vite-sveltejsdocs/vite-sveltejsdocs-0.0.4.tgz"
+		"vite": "^8.0.7"
 	},
 	"keywords": [
 		"svelte"
